@@ -112,14 +112,33 @@ class ArkTSAnalyzer:
 
 
 def update_file_knowledge_graph(file_path):
-    analyzer = ArkTSAnalyzer()
-    classes = analyzer.analyze_file(file_path)
+    # 优化：先检查文件是否存在，计算 hash
+    if not file_path or not isinstance(file_path, str):
+        return
+        
+    if not __import__('os').path.exists(file_path):
+        return
+    
     file_hash = database.compute_file_hash(file_path)
     
+    # 检查文件是否已经存在且 hash 没有变更
     existing_file = database.get_file_by_path(file_path)
     if existing_file:
+        # 比较 hash（注意处理类型问题）
+        existing_hash = existing_file['hash']
+        if isinstance(existing_hash, (bytes, bytearray)):
+            existing_hash = existing_hash.hex()
+        
+        if existing_hash == file_hash:
+            # 文件没有变更，跳过
+            return
+        
+        # 文件变更了，删除旧数据
         database.delete_file_data(existing_file['id'])
     
+    # 现在进行分析
+    analyzer = ArkTSAnalyzer()
+    classes = analyzer.analyze_file(file_path)
     file_id = database.insert_file(file_path, file_hash)
     
     class_name_to_id = {}

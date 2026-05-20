@@ -54,7 +54,12 @@ class ChangeQueue:
                                 arkts_analyzer.update_file_knowledge_graph(file_path)
                                 self.callback('file_changed', {'path': file_path, 'type': event_type})
                         elif event_type == 'deleted':
-                            pass
+                            # 处理文件删除
+                            import database
+                            existing_file = database.get_file_by_path(file_path)
+                            if existing_file:
+                                database.delete_file_data(existing_file['id'])
+                                self.callback('file_deleted', {'path': file_path})
                     except Exception as e:
                         print(f"Error processing {file_path}: {e}")
 

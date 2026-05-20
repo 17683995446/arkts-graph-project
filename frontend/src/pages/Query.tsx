@@ -122,15 +122,23 @@ export const Query: React.FC = () => {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-700">
-                          {result.result.map((row: any, i: number) => (
-                            <tr key={i} className="hover:bg-slate-800/50">
-                              {Object.values(row).map((value, j) => (
-                                <td key={j} className="px-4 py-3 text-slate-300">
-                                  {String(value)}
-                                </td>
-                              ))}
+                          {result.result.length > 0 ? (
+                            result.result.map((row: any, i: number) => (
+                              <tr key={i} className="hover:bg-slate-800/50">
+                                {Object.values(row).map((value, j) => (
+                                  <td key={j} className="px-4 py-3 text-slate-300">
+                                    {String(value)}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td className="px-4 py-8 text-center text-slate-500">
+                                No results found
+                              </td>
                             </tr>
-                          ))}
+                          )}
                         </tbody>
                       </table>
                     </div>

@@ -2,9 +2,10 @@
 import httpx
 from typing import Dict, Any, List
 import json
+import os
 
-SILICONFLOW_API_KEY = "sk-uqelhavcdhfxjzjesdenxpbtqombamjniazzjtbssmdcwdvg"
-SILICONFLOW_BASE_URL = "https://api.siliconflow.cn/v1"
+SILICONFLOW_API_KEY = os.environ.get("SILICONFLOW_API_KEY", "")
+SILICONFLOW_BASE_URL = os.environ.get("SILICONFLOW_BASE_URL", "https://api.siliconflow.cn/v1")
 
 class LLMQueryHandler:
     def __init__(self):

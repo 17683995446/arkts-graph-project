@@ -109,12 +109,12 @@ def init_database(db_path: str = None):
 # Alias for backward compatibility
 init_db = init_database
 
-def compute_file_hash(file_path: str) -> bytes:
+def compute_file_hash(file_path: str) -> str:
     hasher = hashlib.md5()
     with open(file_path, 'rb') as f:
         for chunk in iter(lambda: f.read(4096), b''):
             hasher.update(chunk)
-    return hasher.digest()
+    return hasher.hexdigest()
 
 def get_all_files() -> List[Dict]:
     with get_db_connection() as conn:
@@ -160,13 +160,7 @@ def delete_file_data(file_id: int):
         # Finally delete the file itself
         cursor.execute('DELETE FROM files WHERE id = ?', (file_id,))
 
-def insert_file(path: str, file_hash: bytes | str) -> int:
-    if isinstance(file_hash, str):
-        if len(file_hash) == 32:
-            file_hash = bytes.fromhex(file_hash)
-        else:
-            file_hash = file_hash.encode('utf-8')
-    
+def insert_file(path: str, file_hash: str) -> int:
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
@@ -178,13 +172,7 @@ def insert_file(path: str, file_hash: bytes | str) -> int:
         cursor.execute('SELECT id FROM files WHERE path = ?', (path,))
         return cursor.fetchone()['id']
 
-def update_file(file_id: int, path: str, file_hash: bytes | str):
-    if isinstance(file_hash, str):
-        if len(file_hash) == 32:
-            file_hash = bytes.fromhex(file_hash)
-        else:
-            file_hash = file_hash.encode('utf-8')
-    
+def update_file(file_id: int, path: str, file_hash: str):
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
