@@ -4,6 +4,10 @@ import os
 import threading
 from typing import List, Dict, Optional, Any
 from contextlib import contextmanager
+from logger import setup_logger, log_execution, log_branch, log_warning
+
+# 初始化日志
+setup_logger()
 
 # Default database path
 DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'knowledge_graph.db')
