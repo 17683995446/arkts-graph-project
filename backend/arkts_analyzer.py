@@ -42,35 +42,52 @@ class ArkTSAnalyzer:
             class_obj = ArkTSClass(name, is_component)
             self.classes.append(class_obj)
             
-            # 使用平衡括号算法
+            # 使用改进的平衡括号算法
             start_pos = match.end()
-            open_braces = 0
-            in_string = False
-            escape_next = False
-            content_end = start_pos
             
-            for idx, c in enumerate(content[start_pos:]):
-                if escape_next:
-                    escape_next = False
-                elif c == '\\':
-                    escape_next = True
-                elif c in ('"', "'", '`'):
-                    in_string = not in_string
-                elif not in_string and c == '{':
-                    open_braces += 1
-                elif not in_string and c == '}':
-                    open_braces -= 1
-                    if open_braces == 0:
-                        content_end = start_pos + idx + 1
-                        break
+            # 先找到第一个 { 的位置
+            open_brace_pos = content.find('{', start_pos)
+            if open_brace_pos == -1:
+                # 找不到 {，跳过这个类
+                continue
             
-            class_content = content[start_pos:content_end]
+            content_end = self._find_matching_brace(content, open_brace_pos)
+            
+            if content_end == -1:
+                # 找不到匹配的 }，跳过
+                continue
+            
+            class_content = content[open_brace_pos+1:content_end]
             
             self._extract_methods(class_content, class_obj)
             self._extract_calls(class_content, class_obj)
             
             if is_component:
                 self._extract_child_components(class_content, class_obj)
+    
+    def _find_matching_brace(self, content, start_idx):
+        """找到与 start_idx 处的 { 匹配的 } 的位置"""
+        open_braces = 1
+        in_string = False
+        escape_next = False
+        
+        for idx in range(start_idx + 1, len(content)):
+            c = content[idx]
+            
+            if escape_next:
+                escape_next = False
+            elif c == '\\':
+                escape_next = True
+            elif c in ('"', "'", '`'):
+                in_string = not in_string
+            elif not in_string and c == '{':
+                open_braces += 1
+            elif not in_string and c == '}':
+                open_braces -= 1
+                if open_braces == 0:
+                    return idx
+        
+        return -1
     
     def _extract_methods(self, content, class_obj):
         # UI组件名称列表 - 这些不是类的方法
