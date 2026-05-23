@@ -73,26 +73,86 @@ class ArkTSAnalyzer:
                 self._extract_child_components(class_content, class_obj)
     
     def _extract_methods(self, content, class_obj):
+        # UI组件名称列表 - 这些不是类的方法
+        ui_components = {
+            'Text', 'Button', 'Column', 'Row', 'Stack', 'List', 'ListItem',
+            'Image', 'Scroll', 'ForEach', 'If', 'LazyForEach', 'Repeat',
+            'Navigation', 'NavDestination', 'Tabs', 'TabBar', 'TabContent',
+            'Grid', 'GridItem', 'Swiper', 'Navigator', 'Search', 'TextInput',
+            'TextArea', 'Checkbox', 'Radio', 'Switch', 'Slider', 'Progress',
+            'LoadingProgress', 'Blank', 'Divider', 'Badge', 'QrCode',
+            'AlphabetIndexer', 'Gesture', 'TouchGesture', 'PanGesture',
+            'PinchGesture', 'RotationGesture', 'LongPressGesture',
+            'Animation', 'Animator', 'Transition', 'Environment'
+        }
+        
         method_pattern = r'(?:async\s+)?(\w+)\s*\([^)]*\)\s*(?::\s*\w+)?\s*{'
         matches = re.finditer(method_pattern, content)
         for match in matches:
             method_name = match.group(1)
-            if method_name not in ['if', 'for', 'while', 'switch', 'return', 'let', 'const', 'async', 'export', 'import', 'type', 'interface', 'function']:
-                if method_name and len(method_name) > 0:
-                    class_obj.methods.append(method_name)
+            # 排除关键字
+            if method_name in ['if', 'for', 'while', 'switch', 'return', 'let', 'const', 'async', 'export', 'import', 'type', 'interface', 'function']:
+                continue
+            # 排除UI组件
+            if method_name in ui_components:
+                continue
+            # 排除私有变量（可能有getter/setter）
+            if method_name.startswith('_'):
+                continue
+            if method_name and len(method_name) > 0:
+                class_obj.methods.append(method_name)
     
     def _extract_calls(self, content, class_obj):
-        # 关键改进！先获取方法名，再提取调用！
-        method_set = set(class_obj.methods)
-        call_pattern = r'(\w+)\s*\('
-        matches = re.finditer(call_pattern, content)
+        # UI组件名称列表 - 这些不是方法的调用
+        ui_components = {
+            'Text', 'Button', 'Column', 'Row', 'Stack', 'List', 'ListItem',
+            'Image', 'Scroll', 'ForEach', 'If', 'LazyForEach', 'Repeat',
+            'Navigation', 'NavDestination', 'Tabs', 'TabBar', 'TabContent',
+            'Grid', 'GridItem', 'Swiper', 'Navigator', 'Search', 'TextInput',
+            'TextArea', 'Checkbox', 'Radio', 'Switch', 'Slider', 'Progress',
+            'LoadingProgress', 'Blank', 'Divider', 'Badge', 'QrCode',
+            'AlphabetIndexer', 'Gesture', 'TouchGesture', 'PanGesture',
+            'PinchGesture', 'RotationGesture', 'LongPressGesture',
+            'Animation', 'Animator', 'Transition', 'Environment'
+        }
+        
+        # 关键字列表 - 这些不是方法调用
+        keywords = {
+            'if', 'for', 'while', 'switch', 'return', 'let', 'const',
+            'this', 'new', 'async', 'function', 'class', 'interface',
+            'type', 'enum', 'import', 'export', 'from', 'default',
+            'try', 'catch', 'finally', 'throw', 'break', 'continue',
+            'console', 'log', 'debug', 'warn', 'error', 'info'
+        }
+        
+        # 提取所有函数调用模式
+        # 1. this.xxx() 形式
+        this_call_pattern = r'this\.(\w+)\s*\('
+        matches = re.finditer(this_call_pattern, content)
         for match in matches:
             call_name = match.group(1)
-            if call_name in ['if', 'for', 'while', 'switch', 'return', 'let', 'const', 'this', 'new', 'async', 'function']:
+            if call_name not in class_obj.calls:
+                class_obj.calls.append(call_name)
+        
+        # 2. 直接 xxx() 形式
+        direct_call_pattern = r'(\w+)\s*\('
+        matches = re.finditer(direct_call_pattern, content)
+        for match in matches:
+            call_name = match.group(1)
+            # 排除关键字
+            if call_name in keywords:
                 continue
-            if call_name in method_set:
+            # 排除UI组件
+            if call_name in ui_components:
                 continue
-            if call_name and len(call_name) > 0 and call_name not in class_obj.calls:
+            # 排除自身方法（已通过this.xxx()处理）
+            if call_name in class_obj.methods:
+                continue
+            # 排除已经添加的
+            if call_name in class_obj.calls:
+                continue
+            # 添加其他方法调用
+            if call_name and len(call_name) > 0:
                 class_obj.calls.append(call_name)
     
     def _extract_child_components(self, content, class_obj):
@@ -165,8 +225,10 @@ def update_file_knowledge_graph(file_path):
                     child_id = class_name_to_id[child_name]
                     database.insert_component(class_id, child_id)
         
+        # 创建方法间的调用关系
         for method_name in cls.methods:
             for called_name in cls.calls:
+                # 检查被调用的方法是否在当前类中
                 if called_name in cls.methods:
                     caller_key = f"{cls.name}.{method_name}"
                     callee_key = f"{cls.name}.{called_name}"
